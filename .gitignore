@@ -27,3 +27,4 @@ target
 *.vscode
 *.lock
 *.cargo
+*dist/
