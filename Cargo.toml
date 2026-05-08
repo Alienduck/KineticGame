@@ -1,10 +1,10 @@
 [package]
-name = "kinetic_orbit"
+name = "kinetic_game"
 version = "0.1.0"
 edition = "2021"
 
 [lib]
-name = "kinetic_orbit"
+name = "kinetic_game"
 path = "src/lib.rs"
 
 [dependencies]
