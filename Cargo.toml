@@ -1,0 +1,19 @@
+[package]
+name = "kinetic_orbit"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "kinetic_orbit"
+path = "src/lib.rs"
+
+[dependencies]
+bevy = "0.18.1"
+bevy_rapier2d = "0.33"
+bevy_matchbox = "0.14.0"
+
+[profile.wasm-release]
+inherits = "release"
+opt-level = "s"
+lto = "fat"
+codegen-units = 1
