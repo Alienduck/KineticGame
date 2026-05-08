@@ -1,5 +1,4 @@
 use bevy::prelude::*;
-use kinetic_game::physics::PhysicsCorePlugin;
 
 fn main() {
     App::new()
@@ -11,7 +10,6 @@ fn main() {
             }),
             ..default()
         }))
-        .add_plugins((PhysicsCorePlugin))
         .add_systems(Startup, setup_test)
         .run();
 }
@@ -31,7 +29,7 @@ fn setup_test(
         Transform::default(),
     ));
     commands.spawn((
-        Camera::default(),
+        Camera3d::default(),
         Transform::from_xyz(-2.5, 4.5, 9.0).looking_at(Vec3::ZERO, Vec3::Y),
     ));
 }
