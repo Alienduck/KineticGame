@@ -44,7 +44,7 @@ fn spawn_player(
             RigidBody::Dynamic,
             Collider::capsule_y(0.5, 0.5),
             ColliderMassProperties::Density(2.0),
-            LockedAxes::ROTATION_LOCKED_X | LockedAxes::ROTATION_LOCKED_Z,
+            LockedAxes::ROTATION_LOCKED,
             Friction {
                 coefficient: 0.2,
                 combine_rule: CoefficientCombineRule::Average,
