@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 use bevy_rapier3d::prelude::*;
-use kinetic_game::{components::physics_components::Ground, player::PlayerPlugin};
+use kinetic_game::player::PlayerPlugin;
 
 fn main() {
     App::new()
@@ -18,25 +18,20 @@ fn main() {
         .run();
 }
 
-fn setup_scene(
-    mut commands: Commands,
-    mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<StandardMaterial>>,
-) {
+fn setup_scene(mut commands: Commands, asset_server: Res<AssetServer>) {
     commands.spawn((
         DirectionalLight::default(),
         Transform::from_xyz(0.0, 50.0, 0.0).looking_at(Vec3::ZERO, Vec3::Y),
     ));
+
+    let map_handle: Handle<Scene> = asset_server.load("3Dmodels/fps_tps_map.glb#Scene0");
+
     commands.spawn((
-        Mesh3d(meshes.add(Cuboid::new(20.0, 0.1, 20.0))),
-        MeshMaterial3d(materials.add(Color::srgb(0.8, 0.1, 0.1))),
+        SceneRoot(map_handle),
         Transform::default(),
-        RigidBody::Fixed,
-        Collider::cuboid(10.0, 0.05, 10.0),
-        Ground,
-    ));
-    commands.spawn((
-        Camera3d::default(),
-        Transform::from_xyz(0.0, 15.0, 15.0).looking_at(Vec3::ZERO, Vec3::Y),
+        AsyncSceneCollider {
+            shape: Some(ComputedColliderShape::TriMesh(TriMeshFlags::default())),
+            ..default()
+        },
     ));
 }
