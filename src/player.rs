@@ -3,7 +3,7 @@ use std::f32::consts::FRAC_PI_2;
 use bevy::{input::mouse::MouseMotion, prelude::*};
 use bevy_rapier3d::prelude::*;
 
-use crate::components::physics_components::Ground;
+use crate::{components::physics_components::Ground, utils::Raycast};
 
 pub struct PlayerPlugin;
 
@@ -16,6 +16,7 @@ impl Plugin for PlayerPlugin {
                 move_player,
                 auto_add_ground_to_map,
                 cleanup_gltf_cameras,
+                handle_right_click,
             ),
         );
     }
@@ -62,6 +63,10 @@ fn spawn_player(
         ))
         .with_children(|parent| {
             parent.spawn((
+                Camera {
+                    clear_color: ClearColorConfig::Custom(Color::srgb(0.5, 0.5, 0.8)),
+                    ..default()
+                },
                 Camera3d::default(),
                 PlayerCamera,
                 Transform::from_xyz(0.0, 0.5, 0.0),
@@ -184,4 +189,41 @@ fn cleanup_gltf_cameras(
     for entity in intruder_cameras.iter() {
         commands.entity(entity).despawn();
     }
+}
+
+fn handle_right_click(
+    mouse_buttons: Res<ButtonInput<MouseButton>>,
+    gizmos: Gizmos,
+    query: Query<(&Transform, &Player, Entity)>,
+    rapier_context: ReadRapierContext,
+) {
+    if mouse_buttons.pressed(MouseButton::Right) {
+        draw_grapple_dbg(gizmos, query, rapier_context);
+    }
+}
+
+fn draw_grapple_dbg(
+    mut gizmos: Gizmos,
+    query: Query<(&Transform, &Player, Entity)>,
+    rapier_context: ReadRapierContext,
+) {
+    let Ok((transform, player, entity)) = query.single() else {
+        return;
+    };
+    let Ok(rapier_context) = rapier_context.single() else {
+        return;
+    };
+    let origin = transform.translation + Vec3::Y * 0.5;
+    let direction = (transform.rotation * Quat::from_rotation_x(player.pitch) * Vec3::NEG_Z)
+        .normalize_or_zero();
+    let Some(hit_point) = Raycast::new(
+        origin,
+        direction,
+        &rapier_context,
+        Some(50.0),
+        Some(vec![entity]),
+    ) else {
+        return;
+    };
+    gizmos.line(origin, hit_point.hit_point, Color::WHITE);
 }
