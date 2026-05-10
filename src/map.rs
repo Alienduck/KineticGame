@@ -1,6 +1,9 @@
-use crate::{camera::PlayerCamera, components::physics_components::Ground, player::Player};
+use crate::{camera::PlayerCamera, player::Player};
 use bevy::prelude::*;
 use bevy_rapier3d::prelude::*;
+
+#[derive(Component)]
+pub struct Ground;
 
 pub struct MapPlugin;
 

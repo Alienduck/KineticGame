@@ -1,4 +1,4 @@
-use crate::{camera::PlayerCamera, components::physics_components::Ground, utils::Raycast};
+use crate::{camera::PlayerCamera, map::Ground, utils::Raycast};
 use bevy::prelude::*;
 use bevy_rapier3d::prelude::*;
 
