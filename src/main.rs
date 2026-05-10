@@ -1,6 +1,8 @@
 use bevy::prelude::*;
 use bevy_rapier3d::prelude::*;
-use kinetic_game::{camera::CameraPlugin, map::MapPlugin, menu::MenuPlugin, player::PlayerPlugin};
+use kinetic_game::{
+    camera::CameraPlugin, map::MapPlugin, menu::MenuPlugin, player::PlayerPlugin, state::AppState,
+};
 
 fn main() {
     App::new()
@@ -13,6 +15,7 @@ fn main() {
             ..default()
         }))
         .add_plugins(RapierPhysicsPlugin::<NoUserData>::default())
+        .init_state::<AppState>()
         .add_plugins((MapPlugin, PlayerPlugin, CameraPlugin, MenuPlugin))
         .run();
 }
