@@ -20,7 +20,7 @@ fn setup_scene(mut commands: Commands, asset_server: Res<AssetServer>) {
         Transform::from_xyz(0.0, 50.0, 0.0).looking_at(Vec3::ZERO, Vec3::Y),
     ));
     commands.spawn((
-        SceneRoot(asset_server.load("3Dmodels/fps_tps_map.glb#Scene0")),
+        SceneRoot(asset_server.load("3Dmodels/scene.gltf#Scene0")),
         Transform::default(),
         AsyncSceneCollider {
             shape: Some(ComputedColliderShape::TriMesh(TriMeshFlags::default())),
