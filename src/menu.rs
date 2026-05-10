@@ -1,9 +1,10 @@
-use crate::state::AppState;
+use crate::{player::Player, state::AppState};
 use bevy::{
     app::AppExit,
     prelude::*,
     window::{CursorGrabMode, CursorOptions},
 };
+use bevy_rapier3d::dynamics::{ExternalImpulse, Velocity};
 
 pub struct MenuPlugin;
 impl Plugin for MenuPlugin {
@@ -23,6 +24,7 @@ pub struct MenuContainer;
 pub enum MenuAction {
     Quit,
     Resume,
+    Respawn,
 }
 
 fn setup_menu(mut commands: Commands) {
@@ -33,6 +35,8 @@ fn setup_menu(mut commands: Commands) {
                 height: Val::Percent(100.0),
                 justify_content: JustifyContent::Center,
                 align_items: AlignItems::Center,
+                flex_direction: FlexDirection::Column,
+                column_gap: Val::Px(20.0),
                 ..default()
             },
             BackgroundColor(Color::srgba(0.0, 0.0, 0.0, 0.8)),
@@ -64,7 +68,32 @@ fn setup_menu(mut commands: Commands) {
         ))
         .id();
 
-    commands.entity(container).add_children(&[quit_btn]);
+    let respawn_btn = commands
+        .spawn((
+            Button,
+            Node {
+                width: Val::Px(200.0),
+                height: Val::Px(50.0),
+                justify_content: JustifyContent::Center,
+                align_items: AlignItems::Center,
+                ..default()
+            },
+            BackgroundColor(Color::BLACK),
+            MenuAction::Respawn,
+        ))
+        .with_child((
+            Text("Respawn".into()),
+            TextFont {
+                font_size: 24.0,
+                ..default()
+            },
+            TextColor(Color::WHITE),
+        ))
+        .id();
+
+    commands
+        .entity(container)
+        .add_children(&[quit_btn, respawn_btn]);
 }
 
 fn toggle_state(
@@ -111,22 +140,48 @@ fn handle_buttons(
         (&Interaction, &MenuAction, &mut BackgroundColor),
         (Changed<Interaction>, With<Button>),
     >,
+    mut player_query: Query<
+        (
+            &mut Transform,
+            Option<&mut Velocity>,
+            Option<&mut ExternalImpulse>,
+        ),
+        With<Player>,
+    >,
     mut app_exit: MessageWriter<AppExit>,
     mut next_state: ResMut<NextState<AppState>>,
 ) {
     for (interaction, action, mut color) in &mut interactions {
         match *interaction {
             Interaction::Pressed => {
-                *color = Color::srgb(0.4, 0.1, 0.1).into();
+                *color = color.0.darker(0.3).into();
                 match action {
                     MenuAction::Quit => {
                         app_exit.write(AppExit::Success);
                     }
                     MenuAction::Resume => next_state.set(AppState::InGame),
+                    MenuAction::Respawn => {
+                        if let Ok((mut transform, velocity, impulse)) = player_query.single_mut() {
+                            transform.translation = Vec3::new(0.0, 10.0, 0.0);
+                            if let Some(mut vel) = velocity {
+                                vel.linvel = Vec3::ZERO;
+                                vel.angvel = Vec3::ZERO;
+                            }
+                            if let Some(mut imp) = impulse {
+                                imp.impulse = Vec3::ZERO;
+                                imp.torque_impulse = Vec3::ZERO;
+                            }
+                        }
+                        next_state.set(AppState::InGame);
+                    }
                 }
             }
-            Interaction::Hovered => *color = Color::srgb(0.9, 0.3, 0.3).into(),
-            Interaction::None => *color = Color::srgb(0.8, 0.2, 0.2).into(),
+            Interaction::Hovered => {
+                *color = color.0.lighter(0.2).into();
+            }
+            Interaction::None => {
+                *color = color.0.darker(0.2).into();
+            }
         }
     }
 }
