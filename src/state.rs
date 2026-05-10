@@ -6,3 +6,10 @@ pub enum AppState {
     InGame,
     Menu,
 }
+
+#[derive(States, Debug, Clone, Copy, Eq, PartialEq, Hash, Default)]
+pub enum PlayerState {
+    #[default]
+    InGame = 0,
+    InMenu,
+}

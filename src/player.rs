@@ -1,4 +1,4 @@
-use crate::{camera::PlayerCamera, map::Ground, utils::Raycast};
+use crate::{camera::PlayerCamera, map::Ground, state::PlayerState, utils::Raycast};
 use bevy::prelude::*;
 use bevy_rapier3d::prelude::*;
 
@@ -9,13 +9,6 @@ impl Plugin for PlayerPlugin {
         app.add_systems(Startup, spawn_player)
             .add_systems(Update, (move_player, handle_grapple_dbg));
     }
-}
-
-#[derive(Default, PartialEq, PartialOrd)]
-pub enum PlayerState {
-    #[default]
-    InGame = 0,
-    InMenu,
 }
 
 #[derive(Component)]

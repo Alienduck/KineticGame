@@ -1,6 +1,6 @@
 use crate::{
-    player::{Player, PlayerState},
-    state::AppState,
+    player::Player,
+    state::{AppState, PlayerState},
 };
 use bevy::{input::mouse::MouseMotion, prelude::*};
 use std::f32::consts::FRAC_PI_2;
