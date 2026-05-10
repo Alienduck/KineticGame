@@ -1,4 +1,4 @@
-use crate::player::Player;
+use crate::player::{Player, PlayerState};
 use bevy::{
     input::mouse::MouseMotion,
     prelude::*,
@@ -29,6 +29,9 @@ fn move_camera(
     let Ok(mut cam_transform) = camera_query.single_mut() else {
         return;
     };
+    if player.state == PlayerState::InMenu {
+        return;
+    }
 
     for msg in mouse_motion.read() {
         transform.rotate_y(-msg.delta.x * time.delta_secs() * player.motion_speed);
@@ -41,9 +44,13 @@ fn move_camera(
 fn toggle_cursor(
     mut cursor_options: Single<&mut CursorOptions>,
     mut window_event: MessageReader<WindowFocused>,
+    player_query: Query<&Player>,
 ) {
+    let Ok(player) = player_query.single() else {
+        return;
+    };
     for window in window_event.read() {
-        if window.focused {
+        if window.focused && player.state != PlayerState::InMenu {
             cursor_options.visible = false;
             cursor_options.grab_mode = CursorGrabMode::Locked;
         } else {
