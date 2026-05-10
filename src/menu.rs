@@ -1,114 +1,132 @@
+use crate::state::AppState;
 use bevy::{
-    app::{Plugin, Startup},
-    camera::visibility::Visibility,
-    color::{Color, Srgba},
-    ecs::{
-        component::Component,
-        query::With,
-        system::{Commands, Query},
-    },
-    input::{keyboard::KeyCode, ButtonInput},
+    app::AppExit,
     prelude::*,
-    ui::{BackgroundColor, Node, Val},
-    utils::default,
     window::{CursorGrabMode, CursorOptions},
 };
 
-use crate::player::Player;
-
-#[derive(Component)]
-pub struct CloseButton;
+pub struct MenuPlugin;
+impl Plugin for MenuPlugin {
+    fn build(&self, app: &mut App) {
+        app.add_systems(Startup, setup_menu)
+            .add_systems(Update, toggle_state)
+            .add_systems(OnEnter(AppState::Menu), show_menu)
+            .add_systems(OnExit(AppState::Menu), hide_menu)
+            .add_systems(Update, handle_buttons.run_if(in_state(AppState::Menu)));
+    }
+}
 
 #[derive(Component)]
 pub struct MenuContainer;
 
-pub struct MenuPlugin;
-
-impl Plugin for MenuPlugin {
-    fn build(&self, app: &mut bevy::app::App) {
-        app.add_systems(Startup, setup)
-            .add_systems(Update, (toggle_menu, close_game));
-    }
+#[derive(Component)]
+pub enum MenuAction {
+    Quit,
+    Resume,
 }
 
-fn setup(mut commands: Commands) {
-    commands.spawn((
-        Node {
-            left: Val::Percent(0.0),
-            top: Val::Percent(0.0),
-            width: Val::Percent(100.0),
-            height: Val::Percent(100.0),
-            align_items: AlignItems::Center,
-            justify_content: JustifyContent::Center,
-            align_content: AlignContent::Center,
-            ..default()
-        },
-        BackgroundColor(Color::Srgba(Srgba::new(0.0, 0.0, 0.0, 0.5))),
-        Visibility::Hidden,
-        MenuContainer,
-        children![(
+fn setup_menu(mut commands: Commands) {
+    let container = commands
+        .spawn((
             Node {
-                width: Val::Percent(20.0),
-                height: Val::Percent(5.0),
+                width: Val::Percent(100.0),
+                height: Val::Percent(100.0),
+                justify_content: JustifyContent::Center,
+                align_items: AlignItems::Center,
                 ..default()
             },
-            Text("Close game".into()),
-            TextColor(Color::srgb(0.0, 0.0, 0.0)),
+            BackgroundColor(Color::srgba(0.0, 0.0, 0.0, 0.8)),
+            Visibility::Hidden,
+            MenuContainer,
+        ))
+        .id();
+
+    let quit_btn = commands
+        .spawn((
+            Button,
+            Node {
+                width: Val::Px(200.0),
+                height: Val::Px(50.0),
+                justify_content: JustifyContent::Center,
+                align_items: AlignItems::Center,
+                ..default()
+            },
+            BackgroundColor(Color::srgb(0.8, 0.2, 0.2)),
+            MenuAction::Quit,
+        ))
+        .with_child((
+            Text::new("Quitter"),
             TextFont {
-                font_size: 20.0,
+                font_size: 24.0,
                 ..default()
             },
-            CloseButton,
-            BackgroundColor(Color::Srgba(Srgba {
-                red: 0.2,
-                green: 0.2,
-                blue: 0.2,
-                alpha: 0.5
-            })),
-            Button
-        )],
-    ));
+            TextColor(Color::WHITE),
+        ))
+        .id();
+
+    commands.entity(container).add_children(&[quit_btn]);
 }
 
-fn toggle_menu(
+fn toggle_state(
     inputs: Res<ButtonInput<KeyCode>>,
-    mut player_query: Query<&mut Player>,
-    mut query: Query<&mut Visibility, With<MenuContainer>>,
-    mut cursor_options: Single<&mut CursorOptions>,
+    state: Res<State<AppState>>,
+    mut next_state: ResMut<NextState<AppState>>,
 ) {
-    let Ok(mut player) = player_query.single_mut() else {
-        return;
-    };
     if inputs.just_pressed(KeyCode::Escape) {
-        if let Ok(mut visibility) = query.single_mut() {
-            *visibility = match *visibility {
-                Visibility::Hidden => {
-                    player.state = crate::player::PlayerState::InMenu;
-                    cursor_options.grab_mode = CursorGrabMode::None;
-                    cursor_options.visible = true;
-                    Visibility::Visible
-                }
-                _ => {
-                    player.state = crate::player::PlayerState::InGame;
-                    cursor_options.grab_mode = CursorGrabMode::Locked;
-                    cursor_options.visible = false;
-                    Visibility::Hidden
-                }
-            };
-        }
+        next_state.set(match state.get() {
+            AppState::InGame => AppState::Menu,
+            AppState::Menu => AppState::InGame,
+        });
     }
 }
 
-fn close_game(
-    mut interaction_query: Query<&Interaction, (With<CloseButton>, Changed<Interaction>)>,
-    mut exit: MessageWriter<AppExit>,
+fn show_menu(
+    mut query: Query<&mut Visibility, With<MenuContainer>>,
+    mut cursor_options: Query<&mut CursorOptions>,
 ) {
-    for interaction in &mut interaction_query {
-        match interaction {
+    if let Ok(mut vis) = query.single_mut() {
+        *vis = Visibility::Visible;
+    }
+    if let Ok(mut cursor_options) = cursor_options.single_mut() {
+        cursor_options.visible = true;
+        cursor_options.grab_mode = CursorGrabMode::None;
+    }
+}
+
+fn hide_menu(
+    mut query: Query<&mut Visibility, With<MenuContainer>>,
+    mut cursor_options: Query<&mut CursorOptions>,
+) {
+    if let Ok(mut vis) = query.single_mut() {
+        *vis = Visibility::Hidden;
+    }
+    if let Ok(mut cursor_options) = cursor_options.single_mut() {
+        cursor_options.visible = false;
+        cursor_options.grab_mode = CursorGrabMode::Locked;
+    }
+}
+
+fn handle_buttons(
+    mut interactions: Query<
+        (&Interaction, &MenuAction, &mut BackgroundColor),
+        (Changed<Interaction>, With<Button>),
+    >,
+    mut app_exit: MessageWriter<AppExit>,
+    mut next_state: ResMut<NextState<AppState>>,
+) {
+    for (interaction, action, mut color) in &mut interactions {
+        match *interaction {
             Interaction::Pressed => {
-                exit.write(AppExit::Success);
+                *color = Color::srgb(0.4, 0.1, 0.1).into();
+                match action {
+                    MenuAction::Quit => {
+                        app_exit.write(AppExit::Success);
+                    }
+                    MenuAction::Resume => next_state.set(AppState::InGame),
+                }
             }
-            _ => {}
-        };
+            Interaction::Hovered => *color = Color::srgb(0.9, 0.3, 0.3).into(),
+            Interaction::None => *color = Color::srgb(0.8, 0.2, 0.2).into(),
+        }
     }
 }
