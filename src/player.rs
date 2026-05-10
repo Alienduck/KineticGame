@@ -7,7 +7,7 @@ pub struct PlayerPlugin;
 impl Plugin for PlayerPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(Startup, spawn_player)
-            .add_systems(Update, (move_player, handle_grapple_dbg));
+            .add_systems(Update, (move_player, handle_grapple));
     }
 }
 
@@ -17,6 +17,7 @@ pub struct Player {
     pub motion_speed: f32,
     pub pitch: f32,
     pub state: PlayerState,
+    pub grapple_anchor: Option<Vec3>,
 }
 
 impl Default for Player {
@@ -26,6 +27,7 @@ impl Default for Player {
             motion_speed: 0.1,
             pitch: 0.0,
             state: PlayerState::default(),
+            grapple_anchor: None,
         }
     }
 }
@@ -41,11 +43,13 @@ fn spawn_player(
             MeshMaterial3d(materials.add(Color::srgb(0.2, 0.8, 0.2))),
             Transform::from_xyz(0.0, 10.0, 0.0),
             RigidBody::Dynamic,
+            GravityScale(3.5),
             Collider::capsule_y(0.5, 0.5),
+            Ccd::enabled(),
             ColliderMassProperties::Density(2.0),
             LockedAxes::ROTATION_LOCKED,
             Friction {
-                coefficient: 0.2,
+                coefficient: 0.01,
                 combine_rule: CoefficientCombineRule::Average,
             },
             ExternalImpulse::default(),
@@ -54,6 +58,7 @@ fn spawn_player(
                 angular_damping: 1.0,
             },
             Player::default(),
+            Velocity::default(),
         ))
         .with_children(|parent| {
             parent.spawn((
@@ -105,7 +110,7 @@ fn move_player(
     }
 
     if keyboard.pressed(KeyCode::Space) && is_floored(entity, transform, &ctx, &ground_query) {
-        impulse_dir.y += 5.0;
+        impulse_dir.y += 30.0;
     }
 
     if impulse_dir != Vec3::ZERO {
@@ -127,27 +132,39 @@ fn is_floored(
     }
 }
 
-fn handle_grapple_dbg(
+fn handle_grapple(
     mouse: Res<ButtonInput<MouseButton>>,
-    mut gizmos: Gizmos,
-    query: Query<(&Transform, &Player, Entity)>,
+    mut query: Query<(Entity, &mut Player, &Transform, &mut ExternalImpulse)>,
     rapier_context: ReadRapierContext,
+    mut gizmos: Gizmos,
 ) {
-    if !mouse.pressed(MouseButton::Right) {
-        return;
-    }
-    let Ok((transform, player, entity)) = query.single() else {
+    let Ok((entity, mut player, transform, mut ext_impulse)) = query.single_mut() else {
         return;
     };
     let Ok(ctx) = rapier_context.single() else {
         return;
     };
 
-    let origin = transform.translation + Vec3::Y * 0.5;
-    let direction = (transform.rotation * Quat::from_rotation_x(player.pitch) * Vec3::NEG_Z)
-        .normalize_or_zero();
+    if mouse.just_released(MouseButton::Right) {
+        player.grapple_anchor = None;
+        return;
+    }
 
-    if let Some(hit) = Raycast::new(origin, direction, &ctx, Some(50.0), Some(vec![entity])) {
-        gizmos.line(origin, hit.hit_point, Color::WHITE);
+    let origin = transform.translation + Vec3::Y * 0.5;
+
+    if mouse.just_pressed(MouseButton::Right) {
+        let direction = (transform.rotation * Quat::from_rotation_x(player.pitch) * Vec3::NEG_Z)
+            .normalize_or_zero();
+        if let Some(hit) = Raycast::new(origin, direction, &ctx, Some(50.0), Some(vec![entity])) {
+            player.grapple_anchor = Some(hit.hit_point);
+        }
+    }
+
+    if mouse.pressed(MouseButton::Right) {
+        if let Some(anchor) = player.grapple_anchor {
+            gizmos.line(origin, anchor, Color::WHITE);
+            let pull_dir = (anchor - transform.translation).normalize_or_zero();
+            ext_impulse.impulse += pull_dir * 5.0;
+        }
     }
 }
