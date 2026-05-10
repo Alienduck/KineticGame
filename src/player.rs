@@ -11,11 +11,19 @@ impl Plugin for PlayerPlugin {
     }
 }
 
+#[derive(Default, PartialEq, PartialOrd)]
+pub enum PlayerState {
+    #[default]
+    InGame = 0,
+    InMenu,
+}
+
 #[derive(Component)]
 pub struct Player {
     pub move_speed: f32,
     pub motion_speed: f32,
     pub pitch: f32,
+    pub state: PlayerState,
 }
 
 impl Default for Player {
@@ -24,6 +32,7 @@ impl Default for Player {
             move_speed: 1.0,
             motion_speed: 0.1,
             pitch: 0.0,
+            state: PlayerState::default(),
         }
     }
 }
