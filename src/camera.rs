@@ -1,16 +1,15 @@
-use crate::player::{Player, PlayerState};
-use bevy::{
-    input::mouse::MouseMotion,
-    prelude::*,
-    window::{CursorGrabMode, CursorOptions, PrimaryWindow, WindowFocused},
+use crate::{
+    player::{Player, PlayerState},
+    state::AppState,
 };
+use bevy::{input::mouse::MouseMotion, prelude::*};
 use std::f32::consts::FRAC_PI_2;
 
 pub struct CameraPlugin;
 
 impl Plugin for CameraPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(Update, (move_camera, toggle_cursor));
+        app.add_systems(Update, move_camera.run_if(in_state(AppState::InGame)));
     }
 }
 
@@ -38,24 +37,5 @@ fn move_camera(
         player.pitch = (player.pitch - msg.delta.y * time.delta_secs() * player.motion_speed)
             .clamp(-FRAC_PI_2 + 0.01, FRAC_PI_2 - 0.01);
         cam_transform.rotation = Quat::from_rotation_x(player.pitch);
-    }
-}
-
-fn toggle_cursor(
-    mut cursor_options: Single<&mut CursorOptions>,
-    mut window_event: MessageReader<WindowFocused>,
-    player_query: Query<&Player>,
-) {
-    let Ok(player) = player_query.single() else {
-        return;
-    };
-    for window in window_event.read() {
-        if window.focused && player.state != PlayerState::InMenu {
-            cursor_options.visible = false;
-            cursor_options.grab_mode = CursorGrabMode::Locked;
-        } else {
-            cursor_options.visible = true;
-            cursor_options.grab_mode = CursorGrabMode::None;
-        }
     }
 }
