@@ -1,4 +1,4 @@
-use crate::{camera::PlayerCamera, player::Player};
+use crate::{camera::PlayerCamera, player::Player, weapon::Projectile};
 use bevy::prelude::*;
 use bevy_rapier3d::prelude::*;
 
@@ -20,7 +20,7 @@ fn setup_scene(mut commands: Commands, asset_server: Res<AssetServer>) {
         Transform::from_xyz(0.0, 50.0, 0.0).looking_at(Vec3::ZERO, Vec3::Y),
     ));
     commands.spawn((
-        SceneRoot(asset_server.load("3Dmodels/fps_tps_map.glb#Scene0")),
+        SceneRoot(asset_server.load("3Dmodels/FuturisticCity/scene.gltf#Scene0")),
         Transform::default(),
         AsyncSceneCollider {
             shape: Some(ComputedColliderShape::TriMesh(TriMeshFlags::default())),
@@ -31,13 +31,10 @@ fn setup_scene(mut commands: Commands, asset_server: Res<AssetServer>) {
 
 fn auto_add_ground_to_map(
     mut commands: Commands,
-    new_colliders: Query<Entity, Added<Collider>>,
-    players: Query<(), With<Player>>,
+    new_colliders: Query<Entity, (Added<Collider>, Without<Player>, Without<Projectile>)>,
 ) {
     for entity in new_colliders.iter() {
-        if !players.contains(entity) {
-            commands.entity(entity).insert(Ground);
-        }
+        commands.entity(entity).insert(Ground);
     }
 }
 
