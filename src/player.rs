@@ -21,19 +21,21 @@ pub struct Player {
     pub state: PlayerState,
     pub grapple_anchor: Option<Vec3>,
     pub grapple_force: f32,
+    pub grapple_range: f32,
 }
 
 impl Default for Player {
     fn default() -> Self {
         Self {
             move_speed: 2.0,
-            air_speed: 1.5,
+            air_speed: 1.0,
             jump_force: 20.0,
             motion_speed: 0.1,
             pitch: 0.0,
             state: PlayerState::default(),
             grapple_anchor: None,
             grapple_force: 5.0,
+            grapple_range: 200.0,
         }
     }
 }
@@ -45,30 +47,37 @@ fn spawn_player(
 ) {
     commands
         .spawn((
-            Mesh3d(meshes.add(Capsule3d::new(0.5, 1.0))),
-            MeshMaterial3d(materials.add(Color::srgb(0.2, 0.8, 0.2))),
-            Transform::from_xyz(0.0, 100.0, 0.0),
-            RigidBody::Dynamic,
-            GravityScale(5.0),
-            Collider::capsule_y(0.5, 0.5),
-            Ccd::enabled(),
-            ColliderMassProperties::Density(2.0),
-            LockedAxes::ROTATION_LOCKED,
-            Friction {
-                coefficient: 0.0,
-                combine_rule: CoefficientCombineRule::Min,
-            },
-            Restitution {
-                coefficient: 0.0,
-                combine_rule: CoefficientCombineRule::Min,
-            },
-            ExternalImpulse::default(),
-            Damping {
-                linear_damping: 0.2,
-                angular_damping: 0.5,
-            },
-            Player::default(),
-            Velocity::default(),
+            (
+                Mesh3d(meshes.add(Capsule3d::new(0.5, 1.0))),
+                MeshMaterial3d(materials.add(Color::srgb(0.2, 0.8, 0.2))),
+                Transform::from_xyz(0.0, 100.0, 0.0),
+                Player::default(),
+            ),
+            (
+                RigidBody::Dynamic,
+                GravityScale(5.0),
+                Collider::capsule_y(0.5, 0.5),
+                CollisionGroups::new(Group::GROUP_1, Group::GROUP_2),
+                Ccd::enabled(),
+                ColliderMassProperties::Density(2.0),
+                LockedAxes::ROTATION_LOCKED,
+            ),
+            (
+                Friction {
+                    coefficient: 0.0,
+                    combine_rule: CoefficientCombineRule::Min,
+                },
+                Restitution {
+                    coefficient: 0.0,
+                    combine_rule: CoefficientCombineRule::Min,
+                },
+                ExternalImpulse::default(),
+                Damping {
+                    linear_damping: 0.2,
+                    angular_damping: 0.5,
+                },
+                Velocity::default(),
+            ),
         ))
         .with_children(|parent| {
             parent.spawn((
