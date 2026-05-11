@@ -14,20 +14,26 @@ impl Plugin for PlayerPlugin {
 #[derive(Component)]
 pub struct Player {
     pub move_speed: f32,
+    pub air_speed: f32,
+    pub jump_force: f32,
     pub motion_speed: f32,
     pub pitch: f32,
     pub state: PlayerState,
     pub grapple_anchor: Option<Vec3>,
+    pub grapple_force: f32,
 }
 
 impl Default for Player {
     fn default() -> Self {
         Self {
-            move_speed: 1.0,
+            move_speed: 2.0,
+            air_speed: 1.5,
+            jump_force: 20.0,
             motion_speed: 0.1,
             pitch: 0.0,
             state: PlayerState::default(),
             grapple_anchor: None,
+            grapple_force: 5.0,
         }
     }
 }
@@ -41,21 +47,25 @@ fn spawn_player(
         .spawn((
             Mesh3d(meshes.add(Capsule3d::new(0.5, 1.0))),
             MeshMaterial3d(materials.add(Color::srgb(0.2, 0.8, 0.2))),
-            Transform::from_xyz(0.0, 10.0, 0.0),
+            Transform::from_xyz(0.0, 100.0, 0.0),
             RigidBody::Dynamic,
-            GravityScale(3.5),
+            GravityScale(5.0),
             Collider::capsule_y(0.5, 0.5),
             Ccd::enabled(),
             ColliderMassProperties::Density(2.0),
             LockedAxes::ROTATION_LOCKED,
             Friction {
-                coefficient: 0.01,
-                combine_rule: CoefficientCombineRule::Average,
+                coefficient: 0.0,
+                combine_rule: CoefficientCombineRule::Min,
+            },
+            Restitution {
+                coefficient: 0.0,
+                combine_rule: CoefficientCombineRule::Min,
             },
             ExternalImpulse::default(),
             Damping {
-                linear_damping: 2.0,
-                angular_damping: 1.0,
+                linear_damping: 0.2,
+                angular_damping: 0.5,
             },
             Player::default(),
             Velocity::default(),
@@ -75,11 +85,17 @@ fn spawn_player(
 
 fn move_player(
     keyboard: Res<ButtonInput<KeyCode>>,
-    mut query: Query<(Entity, &mut ExternalImpulse, &Transform, &Player)>,
+    mut query: Query<(
+        Entity,
+        &mut ExternalImpulse,
+        &mut Damping,
+        &Transform,
+        &Player,
+    )>,
     ground_query: Query<(), With<Ground>>,
     rapier_context: ReadRapierContext,
 ) {
-    let Ok((entity, mut ext_impulse, transform, player)) = query.single_mut() else {
+    let Ok((entity, mut ext_impulse, mut damping, transform, player)) = query.single_mut() else {
         return;
     };
     let Ok(ctx) = rapier_context.single() else {
@@ -100,21 +116,39 @@ fn move_player(
         input_dir.x += 1.0;
     }
 
+    let is_floored = is_floored(entity, transform, &ctx, &ground_query);
+
+    if is_floored {
+        damping.linear_damping = 5.0;
+    } else {
+        damping.linear_damping = 0.5;
+    }
+
     let mut impulse_dir = Vec3::ZERO;
+
     if input_dir != Vec3::ZERO {
         let forward = transform.forward();
         let right = transform.right();
         let flat_forward = Vec3::new(forward.x, 0.0, forward.z).normalize_or_zero();
         let flat_right = Vec3::new(right.x, 0.0, right.z).normalize_or_zero();
-        impulse_dir = (flat_forward * -input_dir.z + flat_right * input_dir.x).normalize_or_zero();
+
+        let move_direction =
+            (flat_forward * -input_dir.z + flat_right * input_dir.x).normalize_or_zero();
+
+        let current_speed = if is_floored {
+            player.move_speed
+        } else {
+            player.air_speed
+        };
+        impulse_dir += move_direction * current_speed;
     }
 
-    if keyboard.pressed(KeyCode::Space) && is_floored(entity, transform, &ctx, &ground_query) {
-        impulse_dir.y += 30.0;
+    if keyboard.pressed(KeyCode::Space) && is_floored {
+        impulse_dir.y += player.jump_force;
     }
 
     if impulse_dir != Vec3::ZERO {
-        ext_impulse.impulse += impulse_dir * player.move_speed;
+        ext_impulse.impulse += impulse_dir;
     }
 }
 
@@ -164,7 +198,7 @@ fn handle_grapple(
         if let Some(anchor) = player.grapple_anchor {
             gizmos.line(origin, anchor, Color::WHITE);
             let pull_dir = (anchor - transform.translation).normalize_or_zero();
-            ext_impulse.impulse += pull_dir * 5.0;
+            ext_impulse.impulse += pull_dir * player.grapple_force;
         }
     }
 }
