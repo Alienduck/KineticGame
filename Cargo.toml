@@ -8,7 +8,7 @@ name = "kinetic_game"
 path = "src/lib.rs"
 
 [dependencies]
-bevy = "0.18.1"
+bevy = { version = "0.18.1", features = ["jpeg"] }
 bevy_rapier3d = "0.33"
 bevy_matchbox = "0.14.0"
 
