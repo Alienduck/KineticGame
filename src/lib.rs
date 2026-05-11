@@ -4,3 +4,4 @@ pub mod menu;
 pub mod player;
 pub mod state;
 pub mod utils;
+pub mod weapon;
