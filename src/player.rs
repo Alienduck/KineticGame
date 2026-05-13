@@ -57,7 +57,7 @@ fn spawn_player(
                 RigidBody::Dynamic,
                 GravityScale(5.0),
                 Collider::capsule_y(0.5, 0.5),
-                CollisionGroups::new(Group::GROUP_1, Group::GROUP_2),
+                CollisionGroups::new(Group::GROUP_1, Group::ALL),
                 Ccd::enabled(),
                 ColliderMassProperties::Density(2.0),
                 LockedAxes::ROTATION_LOCKED,
